@@ -5,16 +5,16 @@
 #ifndef STORAGE_LEVELDB_UTIL_ARENA_H_
 #define STORAGE_LEVELDB_UTIL_ARENA_H_
 
-#include <vector>
+#include "port/port.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "port/port.h"
+#include <vector>
 
 namespace leveldb {
 
 //Overprovision
-#define MEM_THRESH 1.5
+#define MEM_THRESH 1.0
 
 class Arena {
 public:
@@ -29,7 +29,8 @@ public:
 
     // Returns an estimate of the total memory usage of data allocated
     // by the arena.
-    size_t MemoryUsage() const {
+    size_t MemoryUsage() const
+    {
         return reinterpret_cast<uintptr_t>(memory_usage_.NoBarrier_Load());
     }
 
@@ -41,7 +42,7 @@ public:
     size_t getAllocRem();
     void* map_start_;
     void* map_end_;
-    int  is_largemap_set_;
+    int is_largemap_set_;
     bool nvmarena_;
     long kSize;
     std::string mfile;
@@ -58,6 +59,7 @@ public:
 
     // Array of new[] allocated memory blocks
     std::vector<char*> blocks_;
+
 protected:
     // Total memory usage of the arena.
     port::AtomicPointer memory_usage_;
@@ -66,7 +68,8 @@ protected:
     //Arena(const Arena&);
 };
 
-inline char* Arena::Allocate(size_t bytes) {
+inline char* Arena::Allocate(size_t bytes)
+{
     // The semantics of what to return are a bit messy if we allow
     // 0-byte allocations, so we disallow them here (we don't need
     // them for our internal use).
@@ -82,10 +85,10 @@ inline char* Arena::Allocate(size_t bytes) {
     return AllocateFallback(bytes);
 }
 
-class ArenaNVM : public Arena{
+class ArenaNVM : public Arena {
 public:
 #ifdef ENABLE_RECOVERY
-    ArenaNVM(long size, std::string *filename, bool recovery);
+    ArenaNVM(long size, std::string* filename, bool recovery);
 #else
     ArenaNVM();
 #endif
@@ -104,13 +107,15 @@ public:
 
     // Returns an estimate of the total memory usage of data allocated
     // by the arena.
-    size_t MemoryUsage() const {
+    size_t MemoryUsage() const
+    {
         return reinterpret_cast<uintptr_t>(memory_usage_.NoBarrier_Load());
     }
     // Total memory usage of the arena.
 };
 
-inline char* ArenaNVM::Allocate(size_t bytes) {
+inline char* ArenaNVM::Allocate(size_t bytes)
+{
     assert(bytes > 0);
     if (bytes <= alloc_bytes_remaining_) {
         char* result = alloc_ptr_;
@@ -118,13 +123,13 @@ inline char* ArenaNVM::Allocate(size_t bytes) {
         alloc_bytes_remaining_ -= bytes;
 #if defined(ENABLE_RECOVERY)
         memory_usage_.NoBarrier_Store(
-                reinterpret_cast<void*>(MemoryUsage() + bytes + sizeof(char*)));
+            reinterpret_cast<void*>(MemoryUsage() + bytes + sizeof(char*)));
 #endif
         return result;
     }
     return AllocateFallbackNVM(bytes);
 }
 
-}  // namespace leveldb
+} // namespace leveldb
 
-#endif  // STORAGE_LEVELDB_UTIL_ARENA_H_
+#endif // STORAGE_LEVELDB_UTIL_ARENA_H_
